@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+import pkg from "./package.json";
+
+const appCommit = process.env.APP_COMMIT ?? process.env.GITHUB_SHA ?? "dev";
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -21,6 +25,10 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   output: "standalone",
   poweredByHeader: false,
+  env: {
+    APP_VERSION: pkg.version,
+    APP_COMMIT: appCommit,
+  },
   serverExternalPackages: [
     "@node-rs/argon2",
     "@prisma/adapter-mariadb",

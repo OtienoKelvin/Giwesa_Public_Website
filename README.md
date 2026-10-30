@@ -151,10 +151,11 @@ re-encoded as WebP, restricted in size and written with generated filenames.
 
 ### Media storage
 
-Development stores media in `public/uploads/` (gitignored). In production that
-directory must be a persistent writable path mounted under the application's
-public directory; a redeploy must not replace it. The storage boundary is
-isolated in `src/domains/media/service.ts` for a future object-storage adapter.
+Development stores media in `public/uploads/` (gitignored). Production releases
+are immutable, so the deploy workflow links each release's `public/uploads` to a
+persistent `app/shared/uploads` directory. The release tarball never contains
+local uploads. The storage boundary is isolated in
+`src/domains/media/service.ts` for a future object-storage adapter.
 
 ## Database and migrations
 
@@ -185,6 +186,50 @@ The integration harness derives its target only from `TEST_DATABASE_URL`,
 requires a `_test` database name, applies committed migrations, and resets test
 tables between cases. It does not use the development database.
 
+## Health and build identity
+
+`GET /api/health` is public, uncached and request-time. It checks the database and
+reports the build version and commit, returning `503` if the database is down. It
+never exposes credentials, paths or visitor data.
+
+Build identity is inlined by `next.config.ts` from `APP_VERSION` (package
+version) and `APP_COMMIT` (CI commit SHA). It is also written into the package
+`release.json`, allowing deployment verification to prove the running bytes match
+the validated commit.
+
+## CI and release packaging
+
+GitHub Actions is defined in `.github/workflows/ci.yml` and
+`.github/workflows/production.yml`.
+
+- `development` pushes validate only: lint, typecheck, formatting, unit tests,
+  MySQL integration tests, production build, Linux artifact packaging and a
+  packaged-runtime smoke test.
+- `main` calls the same CI workflow, then optionally deploys the exact artifact
+  that passed validation.
+- Deployment is gated behind the repository variable `DEPLOY_ENABLED=true`.
+- Production never receives a database credential; migrations run on the host
+  from `~/.config/giwesa-public/deploy.env`.
+- Production deployment, release layout, first-time symlink setup, migration
+  policy, rollback and required variables/secrets are documented in
+  [DEPLOYMENT.md](DEPLOYMENT.md).
+
+Local packaging is Linux-only because Argon2 and Sharp use platform-specific
+native binaries:
+
+```bash
+APP_COMMIT="$(git rev-parse HEAD)" pnpm build
+pnpm release:package
+SMOKE_DATABASE_URL="mysql://.../giwesa_public_smoke_test" \
+SMOKE_EXPECT_COMMIT="$(git rev-parse HEAD)" \
+pnpm release:smoke .release/<release-directory>
+```
+
+The package contains `server.js`, `.next` (including static assets), `public`,
+production `node_modules` (including the Prisma CLI for host migrations),
+`prisma/schema.prisma`, `prisma/migrations`, `prisma.config.mjs` and
+`release.json`. It never contains `.env`, local uploads or `prisma/seed.ts`.
+
 ## Email notifications
 
 New inquiry and booking notifications use Nodemailer when SMTP and
@@ -209,16 +254,17 @@ deployed across multiple instances, move the same interface to a shared store
 
 ## Production notes
 
-- Node 20.20.2, pnpm, standalone Next.js output, HOSTAFRICA/DirectAdmin style
-  hosting are compatible with the existing GIWESA practice.
+- Node 20.20.2 (`.nvmrc`), pnpm 12, standalone Next.js output and
+  HOSTAFRICA/DirectAdmin-style hosting are the deployment baseline.
 - Set `APP_URL` to the real public HTTPS URL; canonical URLs, sitemap and social
   images depend on it.
-- Run `prisma migrate deploy` before starting the new release.
-- Keep `public/uploads` persistent and writable, or implement object storage.
+- Use the Linux artifact from CI and run `prisma migrate deploy` on the host
+  before activating the release.
+- `app/shared/uploads` is persistent; each immutable release links
+  `public/uploads` to it.
 - Set real SMTP values only through host environment variables.
 - Serve over HTTPS so session cookies are `Secure` in production.
-- No deployment, push or production database operation has been performed by
-  this repository setup.
+- Deployment remains gated and no production deployment has been performed.
 
 ## Content accuracy
 

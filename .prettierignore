@@ -3,6 +3,7 @@ node_modules
 coverage
 src/generated
 public/uploads
+.release
 .qa
 pnpm-lock.yaml
 next-env.d.ts

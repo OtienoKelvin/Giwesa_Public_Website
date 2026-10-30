@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { bookingSchema } from "@/domains/bookings/schema";
 import { Button } from "@/components/ui/button";
 
 const formSchema = bookingSchema.omit({ startedAt: true, privacy: true }).extend({
+  startedAt: z.number().int().nonnegative(),
   privacy: z.boolean().refine((value) => value === true, {
     message: "Please accept the privacy notice.",
   }),
@@ -35,11 +36,11 @@ function emptyValues() {
     message: "",
     privacy: false,
     company: "",
+    startedAt: 0,
   };
 }
 
 export function BookingForm() {
-  const [startedAt, setStartedAt] = useState(() => clockNow());
   const [status, setStatus] = useState("");
   const [success, setSuccess] = useState(false);
 
@@ -47,6 +48,7 @@ export function BookingForm() {
     register,
     handleSubmit,
     reset,
+    setValue,
     setError,
     clearErrors,
     formState: { errors, isSubmitting },
@@ -55,17 +57,23 @@ export function BookingForm() {
     defaultValues: emptyValues(),
   });
 
+  // This is a browser-only value. Setting it after hydration keeps Server
+  // prerendering deterministic: no current-time read happens during render.
+  useEffect(() => {
+    setValue("startedAt", clockNow(), { shouldValidate: false, shouldDirty: false });
+  }, [setValue]);
+
   function startAnother() {
     reset(emptyValues());
+    setValue("startedAt", clockNow(), { shouldValidate: false, shouldDirty: false });
     setSuccess(false);
     setStatus("");
-    setStartedAt(clockNow());
   }
 
   const onSubmit = handleSubmit(async (data) => {
     setStatus("");
     clearErrors();
-    if (!startedAt) {
+    if (!data.startedAt) {
       setStatus("The form is still loading. Please try again.");
       return;
     }
@@ -74,7 +82,7 @@ export function BookingForm() {
       const response = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, startedAt }),
+        body: JSON.stringify(data),
       });
       const payload = (await response.json().catch(() => null)) as {
         ok?: boolean;
@@ -96,7 +104,7 @@ export function BookingForm() {
 
       setSuccess(true);
       reset(emptyValues());
-      setStartedAt(clockNow());
+      setValue("startedAt", clockNow(), { shouldValidate: false, shouldDirty: false });
     } catch {
       setStatus("Your request could not be sent. Check your connection and try again.");
     }

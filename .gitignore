@@ -37,6 +37,9 @@ yarn-error.log*
 # local media uploads
 /public/uploads/
 
+# packaged release output
+/.release/
+
 # generated Prisma client
 /src/generated/
 

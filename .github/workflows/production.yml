@@ -1,0 +1,384 @@
+name: Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Never cancel a production deployment halfway through migration or activation.
+concurrency:
+  group: giwesa-public-production
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate main
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    name: Deploy validated release
+    needs: validate
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Validate deployment variables and secrets
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_APP_ROOT: ${{ vars.DEPLOY_APP_ROOT }}
+          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "$DEPLOY_HOST" ] || missing="$missing DEPLOY_HOST"
+          [ -n "$DEPLOY_USER" ] || missing="$missing DEPLOY_USER"
+          [ -n "$DEPLOY_APP_ROOT" ] || missing="$missing DEPLOY_APP_ROOT"
+          [ -n "$PRODUCTION_URL" ] || missing="$missing PRODUCTION_URL"
+          [ -n "$DEPLOY_SSH_KEY" ] || missing="$missing DEPLOY_SSH_KEY(secret)"
+          [ -n "$DEPLOY_KNOWN_HOSTS" ] || missing="$missing DEPLOY_KNOWN_HOSTS(secret)"
+          if [ -n "$missing" ]; then
+            echo "::error title=Deployment configuration incomplete::Missing:${missing}"
+            exit 1
+          fi
+          echo "Required deployment configuration is present."
+
+      - name: Install SSH key and verified host key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Download the exact validated artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.validate.outputs.artifact_name }}
+          path: .release
+
+      - name: Verify the downloaded archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          tarball=$(find .release -maxdepth 1 -name '*.tar.gz' -print -quit)
+          [ -n "$tarball" ] || { echo "::error title=No validated artifact::download-artifact produced no archive"; exit 1; }
+          echo "RELEASE_ARTIFACT=$tarball" >> "$GITHUB_ENV"
+          tar -tzf "$tarball" >/dev/null
+          echo "Artifact downloaded and readable: $tarball"
+
+      - name: Preflight host release layout
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_APP_ROOT: ${{ vars.DEPLOY_APP_ROOT }}
+        run: |
+          set -euo pipefail
+          port="${DEPLOY_PORT:-22}"
+          ssh_opts=(-i ~/.ssh/deploy_key -p "$port" -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_APP_ROOT" <<'EOF'
+          set -euo pipefail
+          app_root="$1"
+          for directory in "$app_root" "$app_root/releases" "$app_root/shared"; do
+            if [ ! -d "$directory" ]; then
+              echo "::error title=Host layout not prepared::$directory is missing. Prepare the host directories first."
+              exit 1
+            fi
+          done
+          if [ -e "$app_root/current" ] && [ ! -L "$app_root/current" ]; then
+            echo "::error title=Unsafe current path::$app_root/current exists but is not a symlink. Refusing to overwrite it."
+            echo "Migrate it manually: move the existing directory into releases/ and create current as a symlink. See DEPLOYMENT.md."
+            exit 1
+          fi
+          if [ -L "$app_root/current" ]; then
+            resolved=$(readlink -f "$app_root/current" || true)
+            case "$resolved" in
+              "$app_root"/releases/*) ;;
+              *) echo "::error title=Unsafe current target::current points outside releases/"; exit 1 ;;
+            esac
+          fi
+          if [ ! -r "$HOME/.config/giwesa-public/deploy.env" ]; then
+            echo "::error title=Deploy environment missing::Create ~/.config/giwesa-public/deploy.env on the host with DATABASE_URL (mode 600)."
+            exit 1
+          fi
+          perms=$(stat -c '%a' "$HOME/.config/giwesa-public/deploy.env")
+          case "$perms" in
+            600|400) ;;
+            *) echo "::error title=Unsafe deploy env permissions::$HOME/.config/giwesa-public/deploy.env is mode ${perms}, expected 600 or 400."; exit 1 ;;
+          esac
+          echo "Host release layout is safe."
+          EOF
+
+      - name: Upload into a new immutable release directory
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_APP_ROOT: ${{ vars.DEPLOY_APP_ROOT }}
+        run: |
+          set -euo pipefail
+          port="${DEPLOY_PORT:-22}"
+          ssh_opts=(-i ~/.ssh/deploy_key -p "$port" -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          release="$DEPLOY_APP_ROOT/releases/$GITHUB_SHA"
+
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_APP_ROOT" "$release" <<'EOF'
+          set -euo pipefail
+          app_root="$1"
+          release="$2"
+          current=$(readlink -f "$app_root/current" 2>/dev/null || true)
+          if [ -e "$release" ]; then
+            if [ "$release" = "$current" ]; then
+              echo "::error title=Refusing to replace the active release::${release} is currently active."
+              exit 1
+            fi
+            rm -rf -- "$release"
+          fi
+          mkdir -p "$release" "$app_root/shared/uploads"
+          echo "Prepared ${release}"
+          EOF
+
+          scp -i ~/.ssh/deploy_key -P "$port" \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            -o StrictHostKeyChecking=yes \
+            -o BatchMode=yes \
+            "$RELEASE_ARTIFACT" "$DEPLOY_USER@$DEPLOY_HOST:$release/release.tar.gz"
+
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$release" "$DEPLOY_APP_ROOT" "$GITHUB_SHA" <<'EOF'
+          set -euo pipefail
+          release="$1"
+          app_root="$2"
+          expected_commit="$3"
+          cd "$release"
+          tar -xzf release.tar.gz --strip-components=1
+          rm -f release.tar.gz
+          test -f server.js || { echo "::error::server.js missing"; exit 1; }
+          test -f release.json || { echo "::error::release.json missing"; exit 1; }
+          test -f prisma/schema.prisma || { echo "::error::prisma schema missing"; exit 1; }
+          if find "$release" -maxdepth 1 -name '.env*' -print -quit | grep -q .; then
+            echo "::error::Release contains an environment file"; exit 1
+          fi
+          node -e "const m=require('./release.json'); if(m.commit!=='${expected_commit}'){console.error('commit mismatch'); process.exit(1)}"
+          ln -sfn "$app_root/shared/uploads" "$release/public/uploads"
+          echo "Extracted and validated release ${release}"
+          EOF
+
+      - name: Apply committed migrations on the host
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_APP_ROOT: ${{ vars.DEPLOY_APP_ROOT }}
+        run: |
+          set -euo pipefail
+          port="${DEPLOY_PORT:-22}"
+          ssh_opts=(-i ~/.ssh/deploy_key -p "$port" -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          release="$DEPLOY_APP_ROOT/releases/$GITHUB_SHA"
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$release" <<'EOF'
+          set -euo pipefail
+          release="$1"
+          set -a
+          source "$HOME/.config/giwesa-public/deploy.env"
+          set +a
+          test -n "${DATABASE_URL:-}" || { echo "::error::DATABASE_URL is not set in the host deploy env"; exit 1; }
+          cd "$release"
+          node node_modules/prisma/build/index.js migrate deploy \
+            --config prisma.config.mjs \
+            --schema prisma/schema.prisma
+          echo "Migrations applied; current release has not been changed."
+          EOF
+
+      - name: Activate the new release safely
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_APP_ROOT: ${{ vars.DEPLOY_APP_ROOT }}
+        run: |
+          set -euo pipefail
+          port="${DEPLOY_PORT:-22}"
+          ssh_opts=(-i ~/.ssh/deploy_key -p "$port" -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_APP_ROOT" "$GITHUB_SHA" <<'EOF'
+          set -euo pipefail
+          app_root="$1"
+          sha="$2"
+          cd "$app_root"
+          if [ -e "$app_root/current" ] && [ ! -L "$app_root/current" ]; then
+            echo "::error title=Unsafe current path::current is not a symlink. Refusing activation."
+            exit 1
+          fi
+          if [ -e current.next ] && [ ! -L current.next ]; then
+            echo "::error title=Unsafe staging symlink::current.next exists and is not a symlink."
+            exit 1
+          fi
+          rm -f current.next
+          ln -s "releases/$sha" current.next
+          mv -Tf current.next current
+          echo "Activated releases/$sha"
+          EOF
+
+      - name: Restart the application
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_APP_ROOT: ${{ vars.DEPLOY_APP_ROOT }}
+          DEPLOY_RESTART_COMMAND: ${{ vars.DEPLOY_RESTART_COMMAND }}
+        run: |
+          set -euo pipefail
+          port="${DEPLOY_PORT:-22}"
+          restart_b64=$(printf '%s' "${DEPLOY_RESTART_COMMAND:-}" | base64 -w0)
+          ssh_opts=(-i ~/.ssh/deploy_key -p "$port" -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_APP_ROOT" "$restart_b64" <<'EOF'
+          set -euo pipefail
+          app_root="$1"
+          restart_command=$(printf '%s' "${2:-}" | base64 -d 2>/dev/null || true)
+          cd "$app_root/current"
+          if [ -n "$restart_command" ]; then
+            bash -lc "$restart_command"
+          else
+            mkdir -p tmp
+            touch tmp/restart.txt
+          fi
+          echo "Restart command issued."
+          EOF
+
+      - name: Prune old releases safely
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ vars.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_APP_ROOT: ${{ vars.DEPLOY_APP_ROOT }}
+        run: |
+          set -euo pipefail
+          port="${DEPLOY_PORT:-22}"
+          ssh_opts=(-i ~/.ssh/deploy_key -p "$port" -o UserKnownHostsFile=~/.ssh/known_hosts -o StrictHostKeyChecking=yes -o BatchMode=yes)
+          ssh "${ssh_opts[@]}" "$DEPLOY_USER@$DEPLOY_HOST" bash -s -- "$DEPLOY_APP_ROOT" <<'EOF'
+          set -euo pipefail
+          app_root="$1"
+          current=$(readlink -f "$app_root/current")
+          mapfile -t candidates < <(
+            find "$app_root/releases" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+              | sort -nr | cut -d' ' -f2- | tail -n +4
+          )
+          for dir in "${candidates[@]}"; do
+            case "$dir" in
+              "$app_root"/releases/*) ;;
+              *) continue ;;
+            esac
+            if [ "$(readlink -f "$dir")" = "$current" ]; then
+              continue
+            fi
+            rm -rf -- "$dir"
+            echo "Pruned old release $dir"
+          done
+          echo "Retained the current release plus rollback candidates."
+          EOF
+
+  verify:
+    name: Verify public deployment
+    needs: deploy
+    if: ${{ always() && vars.DEPLOY_ENABLED == 'true' && needs.deploy.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+      EXPECTED_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Check public health, homepage and admin login
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${PRODUCTION_URL%/}"
+          test -n "$base" || { echo "::error::PRODUCTION_URL is not configured"; exit 1; }
+          for attempt in $(seq 1 15); do
+            if body=$(curl -fsS --max-time 15 "$base/api/health"); then
+              echo "Health: $body"
+              if printf '%s' "$body" | node -e '
+                let raw="";
+                process.stdin.on("data",(chunk)=>raw+=chunk);
+                process.stdin.on("end",()=>{
+                  const data=JSON.parse(raw);
+                  const expected=process.env.EXPECTED_COMMIT;
+                  if(data.status!=="ok" || data.database!=="up" || data.commit!==expected){
+                    console.error("Unexpected health payload", data);
+                    process.exit(1);
+                  }
+                });
+              '; then
+                break
+              fi
+            fi
+            if [ "$attempt" -eq 15 ]; then
+              echo "::error title=Unhealthy deployment::$base/api/health did not report the new commit after retries."
+              exit 1
+            fi
+            echo "Health not ready (attempt ${attempt}/15)…"
+            sleep 5
+          done
+
+          home_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$base/")
+          login_code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 15 "$base/admin/login")
+          echo "Homepage HTTP $home_code; admin login HTTP $login_code"
+          [ "$home_code" = "200" ] || { echo "::error::Homepage did not return 200"; exit 1; }
+          [ "$login_code" = "200" ] || { echo "::error::Admin login did not return 200"; exit 1; }
+          echo "Public verification passed."
+
+  summary:
+    name: Production run summary
+    needs: [validate, deploy, verify]
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      DEPLOY_ENABLED: ${{ vars.DEPLOY_ENABLED }}
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+      VALIDATE_RESULT: ${{ needs.validate.result }}
+      DEPLOY_RESULT: ${{ needs.deploy.result }}
+      VERIFY_RESULT: ${{ needs.verify.result }}
+      COMMIT_SHA: ${{ github.sha }}
+    steps:
+      - name: Write run summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "### GIWESA public website production run"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Commit | \`${COMMIT_SHA:0:7}\` |"
+            echo "| Validation | ${VALIDATE_RESULT} |"
+            echo "| Deployment | ${DEPLOY_RESULT} |"
+            echo "| Health verification | ${VERIFY_RESULT} |"
+            echo "| Production URL | ${PRODUCTION_URL:-not configured} |"
+            echo "| Artifact | \`giwesa-public-release-${COMMIT_SHA}\` |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$DEPLOY_ENABLED" != "true" ]; then
+            if [ "$VALIDATE_RESULT" = "success" ]; then
+              echo "Validated and packaged. Nothing was deployed."
+              echo "> **Validated and packaged. Nothing was deployed.**"
+            else
+              echo "Validation failed. Nothing was deployed."
+              echo "> **Validation failed. Nothing was deployed.**"
+            fi
+            exit 0
+          fi
+
+          if [ "$VALIDATE_RESULT" = "success" ] && [ "$DEPLOY_RESULT" = "success" ] && [ "$VERIFY_RESULT" = "success" ]; then
+            echo "Deployment successful and healthy at ${PRODUCTION_URL}."
+          else
+            echo "::error title=Production run failed::validate=${VALIDATE_RESULT} deploy=${DEPLOY_RESULT} verify=${VERIFY_RESULT}"
+            exit 1
+          fi

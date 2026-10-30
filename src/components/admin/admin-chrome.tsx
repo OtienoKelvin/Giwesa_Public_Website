@@ -78,8 +78,8 @@ export function AdminChrome({
   }
 
   const sidebar = (mobile = false) => (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-white/10 px-5 py-5">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-5">
         <Link
           href="/admin"
           className="flex items-center gap-3"
@@ -107,7 +107,7 @@ export function AdminChrome({
         ) : null}
       </div>
 
-      <nav aria-label="Admin" className="flex-1 overflow-y-auto px-3 py-5">
+      <nav aria-label="Admin" className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
         <p className="px-3 text-[0.5625rem] font-bold uppercase tracking-[0.18em] text-white/40">
           Workspace
         </p>
@@ -159,7 +159,7 @@ export function AdminChrome({
         </div>
       </nav>
 
-      <div className="border-t border-white/10 p-3">
+      <div className="shrink-0 border-t border-white/10 p-3">
         <div className="flex items-center gap-3 rounded-lg px-2 py-2">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
             {admin.name.slice(0, 1).toUpperCase()}
@@ -193,8 +193,10 @@ export function AdminChrome({
   );
 
   return (
-    <div className="admin-shell min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
-      <aside className="hidden bg-[#062a4c] lg:block">{sidebar()}</aside>
+    <div className="admin-shell h-dvh overflow-hidden lg:grid lg:grid-cols-[16rem_1fr]">
+      <aside className="hidden h-dvh min-h-0 overflow-hidden bg-[#062a4c] lg:flex lg:flex-col">
+        {sidebar()}
+      </aside>
 
       <dialog
         ref={dialogRef}
@@ -205,13 +207,13 @@ export function AdminChrome({
         className="m-0 h-dvh max-h-none w-full max-w-none border-0 bg-transparent p-0 backdrop:bg-[#062a4c]/60 lg:hidden"
         aria-label="Admin navigation"
       >
-        <div className="h-full w-[min(88vw,18rem)] bg-[#062a4c] shadow-2xl animate-in slide-in-from-left-8 duration-200">
+        <div className="h-dvh w-[min(88vw,18rem)] bg-[#062a4c] shadow-2xl animate-in slide-in-from-left-8 duration-200">
           {sidebar(true)}
         </div>
       </dialog>
 
-      <div className="flex min-h-dvh min-w-0 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b border-admin-line bg-white/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
+      <div className="flex h-dvh min-h-0 min-w-0 flex-col overflow-hidden">
+        <header className="z-30 flex h-16 shrink-0 items-center justify-between gap-4 border-b border-admin-line bg-white/95 px-4 backdrop-blur-sm sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -253,7 +255,10 @@ export function AdminChrome({
           </div>
         </header>
 
-        <main id="main-content" className="flex-1 p-4 sm:p-6 lg:p-8">
+        <main
+          id="main-content"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8"
+        >
           {children}
         </main>
       </div>

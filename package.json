@@ -23,7 +23,10 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "release:package": "node scripts/package-standalone.mjs",
+    "release:verify": "node scripts/verify-release-native.mjs",
+    "release:smoke": "node scripts/smoke-standalone.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.1",
@@ -36,6 +39,7 @@
     "mariadb": "^3.5.4",
     "next": "16.4.3",
     "nodemailer": "^10.2.1",
+    "prisma": "7.10.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-hook-form": "^7.91.0",
@@ -60,7 +64,6 @@
     "eslint-config-prettier": "^10.1.8",
     "jsdom": "^26.1.0",
     "prettier": "^3.9.10",
-    "prisma": "7.10.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",

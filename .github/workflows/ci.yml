@@ -1,0 +1,349 @@
+name: CI
+
+on:
+  push:
+    branches: [development]
+  workflow_call:
+    outputs:
+      artifact_name:
+        description: Release artifact produced by this run
+        value: ${{ jobs.build.outputs.artifact_name }}
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Dummy value for jobs that only generate or type-check. It is never reachable
+  # and is overridden by a service database in integration/build/smoke jobs.
+  DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/giwesa_public_ci_dummy
+  APP_URL: https://ci.invalid
+  NEXT_TELEMETRY_DISABLED: "1"
+  # CI must never contact SMTP or use persistent media.
+  SMTP_HOST: ""
+  SMTP_USER: ""
+  SMTP_PASSWORD: ""
+  SMTP_FROM_EMAIL: ""
+  NOTIFICATION_EMAIL: ""
+  MEDIA_ROOT: .qa/ci-media
+  CI: "true"
+
+jobs:
+  static:
+    name: Lint, typecheck and formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Format check
+        run: pnpm format:check
+
+  unit:
+    name: Unit and component tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run unit and component tests
+        run: pnpm test
+
+  integration:
+    name: Integration tests (MySQL 8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-root-password
+          MYSQL_DATABASE: giwesa_public_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-only-root-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      DATABASE_URL: mysql://root:ci-only-root-password@127.0.0.1:3306/giwesa_public_test
+      TEST_DATABASE_URL: mysql://root:ci-only-root-password@127.0.0.1:3306/giwesa_public_test
+      NODE_ENV: test
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for MySQL
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/3306) 2>/dev/null; then
+              echo "MySQL is accepting connections."
+              exit 0
+            fi
+            echo "Waiting for MySQL (attempt ${attempt}/30)…"
+            sleep 5
+          done
+          echo "::error title=MySQL unavailable::The CI MySQL service did not become ready."
+          exit 1
+
+      - name: Apply migrations and run integration tests
+        run: pnpm test:integration
+
+  build:
+    name: Production build and Linux artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    outputs:
+      artifact_name: ${{ steps.artifact_name.outputs.name }}
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-root-password
+          MYSQL_DATABASE: giwesa_public_build
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-only-root-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      DATABASE_URL: mysql://root:ci-only-root-password@127.0.0.1:3306/giwesa_public_build
+      APP_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for MySQL
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/3306) 2>/dev/null; then
+              echo "MySQL is accepting connections."
+              exit 0
+            fi
+            echo "Waiting for MySQL (attempt ${attempt}/30)…"
+            sleep 5
+          done
+          echo "::error title=MySQL unavailable::The build database did not become ready."
+          exit 1
+
+      - name: Prepare the ephemeral build database
+        env:
+          NODE_ENV: development
+          SEED_ADMIN_EMAIL: ci-admin@example.invalid
+          SEED_ADMIN_PASSWORD: not-a-real-ci-password
+          SEED_ADMIN_NAME: CI Administrator
+        run: |
+          pnpm db:deploy
+          pnpm db:seed
+
+      - name: Build the production application
+        run: pnpm build
+
+      - name: Assemble and verify the Linux release
+        run: pnpm release:package
+
+      - name: Verify the archive shape
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t archives < <(find .release -maxdepth 1 -type f -name '*.tar.gz' -print)
+          if [ "${#archives[@]}" -ne 1 ]; then
+            echo "::error title=Release archive missing::expected one .tar.gz, found ${#archives[@]}"
+            exit 1
+          fi
+          archive="${archives[0]}"
+          expected=".release/giwesa-public-home-$(node -p "require('./package.json').version")-${GITHUB_SHA:0:7}.tar.gz"
+          if [ "$archive" != "$expected" ]; then
+            echo "::error title=Unexpected archive name::expected ${expected}, found ${archive}"
+            exit 1
+          fi
+          root="$(basename "${archive%.tar.gz}")"
+          listing=$(tar -tzf "$archive")
+          for required in \
+            server.js \
+            release.json \
+            package.json \
+            prisma.config.mjs \
+            prisma/schema.prisma \
+            node_modules/prisma/build/index.js \
+            node_modules/next/package.json; do
+            if ! grep -qx "${root}/${required}" <<< "$listing"; then
+              echo "::error title=Incomplete release::${required} is missing from ${archive}"
+              exit 1
+            fi
+          done
+          for required in .next/static/ prisma/migrations/; do
+            if ! grep -q "^${root}/${required}" <<< "$listing"; then
+              echo "::error title=Incomplete release::${required} is missing from ${archive}"
+              exit 1
+            fi
+          done
+          if grep -Eq '/\.env(\.|$)|/public/uploads/' <<< "$listing"; then
+            echo "::error title=Unsafe release::the archive contains an env file or local uploads"
+            exit 1
+          fi
+          echo "Release archive verified: ${archive} ($(du -h "$archive" | cut -f1))"
+
+      - name: Name the artifact
+        id: artifact_name
+        run: echo "name=giwesa-public-release-${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the validated release
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact_name.outputs.name }}
+          path: .release/*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+          include-hidden-files: true
+
+  release:
+    name: Smoke-test the packaged release
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-only-root-password
+          MYSQL_DATABASE: giwesa_public_smoke_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-only-root-password"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      DATABASE_URL: mysql://root:ci-only-root-password@127.0.0.1:3306/giwesa_public_smoke_test
+      SMOKE_DATABASE_URL: mysql://root:ci-only-root-password@127.0.0.1:3306/giwesa_public_smoke_test
+      SMOKE_EXPECT_COMMIT: ${{ github.sha }}
+      APP_URL: http://127.0.0.1:3100
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Download the exact CI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: .release
+
+      - name: Extract like the host
+        shell: bash
+        run: |
+          set -euo pipefail
+          tarball=$(find .release -maxdepth 1 -name '*.tar.gz' -print -quit)
+          [ -n "$tarball" ] || { echo "::error title=No artifact::download-artifact produced no archive"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/release"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/release"
+          release=$(find "$RUNNER_TEMP/release" -mindepth 1 -maxdepth 1 -type d -print -quit)
+          echo "RELEASE_DIR=$release" >> "$GITHUB_ENV"
+          echo "Extracted $(basename "$tarball")"
+
+      - name: Re-verify native dependencies from the artifact
+        run: node scripts/verify-release-native.mjs "$RELEASE_DIR" --expect-commit "${GITHUB_SHA:0:7}"
+
+      - name: Wait for MySQL
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            if (echo > /dev/tcp/127.0.0.1/3306) 2>/dev/null; then
+              exit 0
+            fi
+            echo "Waiting for MySQL (attempt ${attempt}/30)…"
+            sleep 5
+          done
+          echo "::error title=MySQL unavailable::The smoke database did not become ready."
+          exit 1
+
+      - name: Smoke-test the packaged runtime
+        run: node scripts/smoke-standalone.mjs "$RELEASE_DIR"
+
+      - name: Release summary
+        if: always()
+        run: |
+          {
+            echo "### Packaged release"
+            echo ""
+            echo "| | |"
+            echo "| --- | --- |"
+            echo "| Artifact | \`giwesa-public-release-${GITHUB_SHA}\` |"
+            echo "| Commit | \`${GITHUB_SHA:0:7}\` |"
+            echo "| Platform | linux/x64 |"
+            echo "| Native checks | Argon2 hash/verify, sharp PNG→WebP |"
+            echo "| Runtime check | packaged server.js against ephemeral MySQL 8 |"
+            echo ""
+          } >> "$GITHUB_STEP_SUMMARY"
