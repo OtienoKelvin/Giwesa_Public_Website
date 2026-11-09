@@ -114,6 +114,7 @@ inquiries, bookings, authentication and admin reads are never cached publicly.
 | `/about`                                               | Organisation, mission, vision and values                         |
 | `/solutions`                                           | Solution overview                                                |
 | `/solutions/[slug]`                                    | Savings & micro-loans, welfare protection, community development |
+| `/membership`                                          | Public membership application (no account required)              |
 | `/insights`                                            | Published articles with topic filtering and pagination           |
 | `/insights/[slug]`                                     | Published article                                                |
 | `/contact`                                             | Inquiry form and contact details                                 |
@@ -124,6 +125,32 @@ inquiries, bookings, authentication and admin reads are never cached publicly.
 
 Legal pages are deliberately marked as drafts pending GIWESA/legal approval and
 are excluded from search indexing.
+
+## Membership registration
+
+`/membership` is an alternative **entry point** into the existing Giwesa
+membership application process — not a second membership system. The website has
+no membership tables and no membership rules of its own:
+
+- the visitor completes the same application requirements the internal process
+  uses, plus this channel's own mandatory documents (a National ID copy and a
+  passport-size photograph);
+- the site's server validates the form and the files, then calls the internal
+  Giwesa Membership & Financial Management System over a signed server-to-server
+  channel (`FMS_API_URL` + shared key/secret);
+- the FMS creates the application in its existing queue, issues the reference,
+  generates the prefilled application-form PDF, sends the confirmation email and
+  runs the normal approval workflow (and its approval email);
+- payment is a separate step: M-Pesa STK Push, manual PayBill (with the
+  application's payment reference, later verified by finance) or — temporarily
+  and configurably — Pay Later.
+
+`/api/membership/**` are same-origin route handlers; they carry no session and no
+membership data, only the signed server-to-server call. The channel secret is
+SERVER-ONLY and never reaches the browser. See
+[`docs/membership-registration.md`](docs/membership-registration.md) for the
+website side (configuration, flow, security, tests); the internal runbook is the
+FMS repository's `docs/public-membership-registration.md`.
 
 ## Admin
 

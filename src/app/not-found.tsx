@@ -5,7 +5,7 @@ import { Logo } from "@/components/public/logo";
 export default function RootNotFound() {
   return (
     <main className="paper-glow flex min-h-dvh items-center justify-center px-5 py-16">
-      <div className="w-full max-w-lg rounded-2xl border border-line bg-paper p-8 text-center shadow-[var(--shadow-soft-value)]">
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-paper p-8 text-center shadow-soft">
         <Logo className="mx-auto size-20" />
         <p className="eyebrow mt-6 justify-center">404</p>
         <h1 className="mt-4 font-display text-4xl text-brand-dark">Page not found.</h1>

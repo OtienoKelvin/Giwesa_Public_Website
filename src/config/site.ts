@@ -4,9 +4,9 @@ export const SITE = {
   tagline: "Empowering Communities. Building Prosperity.",
   description:
     "GIWESA Solutions is a Kenyan microfinance organisation offering savings, micro-loans, welfare protection and community development support.",
-  website: "https://www.giwesa.co.ke",
+  website: "https://giwesa.co.ke",
   defaultPhone: "+254 117 598094",
-  defaultEmail: "info@giwesasolutions.co.ke",
+  defaultEmail: "info@giwesa.co.ke",
   defaultAddress:
     "Homa Bay Town, Off Posta Road, Salama Area (Behind Vilacom Cyber), Homa Bay County, Kenya",
   logo: "/giwesa-logo.jpg",
@@ -16,6 +16,7 @@ export const PUBLIC_NAV = [
   { label: "Home", href: "/" },
   { label: "About", href: "/about" },
   { label: "Solutions", href: "/solutions" },
+  { label: "Membership", href: "/membership" },
   { label: "Insights", href: "/insights" },
   { label: "Contact", href: "/contact" },
 ] as const;
@@ -28,6 +29,7 @@ export const FOOTER_SOLUTIONS = [
 
 export const FOOTER_COMPANY = [
   { label: "About GIWESA", href: "/about" },
+  { label: "Become a member", href: "/membership" },
   { label: "Insights", href: "/insights" },
   { label: "Contact", href: "/contact" },
   { label: "Book a consultation", href: "/book" },
@@ -99,7 +101,7 @@ export const PRODUCT_TERMS: Record<string, ProductTerm[]> = {
     {
       title: "Welfare packages",
       description:
-        "A one-time registration fee of KES 200 applies. Packages 1–4 mature after three months. Package 5 matures after three months for immediate family and five months for parents or in-laws.",
+        "A one-time registration fee of KES 200 applies. Packages 1–4 mature after six months. Package 5 matures after six months for immediate family and six months for parents or in-laws.",
       packages: [
         { name: "Package 1", monthly: "KES 100", benefit: "KES 30,000" },
         { name: "Package 2", monthly: "KES 200", benefit: "KES 45,000" },
@@ -180,7 +182,7 @@ export const PRODUCT_FAQS: Record<string, Array<{ question: string; answer: stri
     {
       question: "When do the welfare packages mature?",
       answer:
-        "Packages 1–4 mature after three months. Package 5 matures after three months for immediate family and five months for parents or in-laws.",
+        "Packages 1–4 mature after six months. Package 5 matures after six months for immediate family and six months for parents or in-laws.",
     },
     {
       question: "What does a welfare package provide?",

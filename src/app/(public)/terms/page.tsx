@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { getSiteSettings } from "@/domains/site-settings/service";
 import { PageHeader } from "@/components/public/page-header";
-import { LegalDraftNotice } from "@/components/public/legal-draft-notice";
+// import { LegalDraftNotice } from "@/components/public/legal-draft-notice";
 
 export const metadata: Metadata = {
   title: "Website terms",
@@ -27,7 +27,7 @@ export default async function TermsPage() {
       <section className="bg-canvas">
         <div className="container-page py-12 sm:py-16">
           <div className="mx-auto max-w-3xl">
-            <LegalDraftNotice />
+            {/* <LegalDraftNotice /> */}
 
             <div className="prose-giwesa mt-10">
               <p>

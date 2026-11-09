@@ -75,10 +75,10 @@ export function SiteNavigation({ phone, phoneHref }: SiteNavigationProps) {
           <span className="numeric">{phone}</span>
         </a>
         <Link
-          href="/book"
+          href="/membership"
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-brand bg-brand px-5 text-[0.8125rem] font-bold text-white transition-colors hover:border-brand-dark hover:bg-brand-dark"
         >
-          Book a consultation
+          Join GIWESA
           <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
       </div>
@@ -138,9 +138,17 @@ export function SiteNavigation({ phone, phoneHref }: SiteNavigationProps) {
 
           <div className="mt-6 space-y-3">
             <Link
-              href="/book"
+              href="/membership"
               onClick={closeMenu}
               className="flex min-h-12 w-full items-center justify-between rounded-full bg-brand px-5 text-sm font-bold text-white"
+            >
+              Join GIWESA
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+            <Link
+              href="/book"
+              onClick={closeMenu}
+              className="flex min-h-12 w-full items-center justify-between rounded-full border border-line-strong bg-white px-5 text-sm font-bold text-ink"
             >
               Book a consultation
               <ArrowRight className="size-4" aria-hidden="true" />

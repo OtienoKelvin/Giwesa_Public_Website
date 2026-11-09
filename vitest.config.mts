@@ -23,11 +23,21 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       APP_URL: "http://localhost:3000",
+      // `src/config/env.ts` validates its shape at import time. Unit tests never
+      // open a connection; the value only satisfies that validation.
+      DATABASE_URL: "mysql://test:test@localhost:3306/giwesa_public_test",
       MEDIA_ROOT: ".qa/test-uploads",
       MEDIA_MAX_BYTES: "4194304",
       SMTP_HOST: "",
       SMTP_FROM_EMAIL: "",
       NOTIFICATION_EMAIL: "",
+      // The membership channel is server-to-server; these test values let the
+      // signing/error-mapping suites exercise `fms-client` without a real FMS.
+      // Every test stubs `fetch`, so no request leaves the process.
+      FMS_API_URL: "https://fms.test",
+      FMS_CHANNEL_KEY: "test-channel-key",
+      FMS_CHANNEL_SECRET: "test-channel-secret-0123456789abcdef",
+      FMS_REQUEST_TIMEOUT_MS: "5000",
     },
     testTimeout: 30_000,
     hookTimeout: 30_000,

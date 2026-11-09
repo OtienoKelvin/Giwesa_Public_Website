@@ -32,11 +32,11 @@ export default async function AdminLoginPage({
       <section className="relative hidden overflow-hidden bg-brand-dark p-10 text-inverse lg:flex lg:flex-col lg:justify-between xl:p-14">
         <div
           aria-hidden="true"
-          className="absolute -right-24 -top-24 size-[32rem] rounded-full border border-white/15"
+          className="absolute -right-24 -top-24 size-128 rounded-full border border-white/15"
         />
         <div
           aria-hidden="true"
-          className="absolute -bottom-40 -left-20 size-[28rem] rounded-full border border-white/10"
+          className="absolute -bottom-40 -left-20 size-112 rounded-full border border-white/10"
         />
         <Link
           href="/"
@@ -96,7 +96,7 @@ export default async function AdminLoginPage({
             </p>
           </div>
 
-          <div className="mt-8 rounded-2xl border border-line bg-white p-5 shadow-[var(--shadow-soft-value)] sm:p-7">
+          <div className="mt-8 rounded-2xl border border-line bg-white p-5 shadow-soft sm:p-7">
             {passwordChanged ? (
               <p
                 role="status"
