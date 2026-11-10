@@ -199,10 +199,7 @@ export async function submitMembership(options: {
     // the visitor can fix it; anything else tells them the reference and that
     // pressing Submit again is safe (the submission key makes the retry idempotent
     // and the FMS reuses the same application).
-    if (
-      error instanceof MembershipRejectedError ||
-      error instanceof MembershipConflictError
-    ) {
+    if (error instanceof MembershipRejectedError || error instanceof MembershipConflictError) {
       throw error;
     }
     throw new MembershipUnavailableError(

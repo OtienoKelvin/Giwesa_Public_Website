@@ -16,8 +16,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/membership" },
   openGraph: {
     title: "Become a GIWESA member",
-    description:
-      "Apply for GIWESA Solutions membership online. No account or login is needed.",
+    description: "Apply for GIWESA Solutions membership online. No account or login is needed.",
     url: "/membership",
   },
 };
@@ -116,7 +115,10 @@ export default async function MembershipPage() {
                 <Phone className="size-4 text-leaf-dark" aria-hidden="true" />
                 <span className="numeric">{settings.phone}</span>
               </a>
-              <Link href="/contact" className="inline-flex items-center gap-1.5 font-bold text-brand">
+              <Link
+                href="/contact"
+                className="inline-flex items-center gap-1.5 font-bold text-brand"
+              >
                 <span className="link-underline">Ask a question first</span>
                 <ArrowUpRight className="size-4" aria-hidden="true" />
               </Link>

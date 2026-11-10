@@ -23,9 +23,9 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       APP_URL: "http://localhost:3000",
-      // `src/config/env.ts` validates its shape at import time. Unit tests never
-      // open a connection; the value only satisfies that validation.
-      DATABASE_URL: "mysql://test:test@localhost:3306/giwesa_public_test",
+      // Integration runs provide DATABASE_URL from TEST_DATABASE_URL. Unit
+      // tests get the safe placeholder in tests/setup/testing.ts instead of
+      // overriding a real test connection here.
       MEDIA_ROOT: ".qa/test-uploads",
       MEDIA_MAX_BYTES: "4194304",
       SMTP_HOST: "",

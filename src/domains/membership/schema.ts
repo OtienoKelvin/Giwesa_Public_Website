@@ -44,14 +44,10 @@ export const SAVINGS_FREQUENCY_OPTIONS = [
 export const PAYMENT_OPTIONS = ["STK_PUSH", "MANUAL", "PAY_LATER"] as const;
 export type PaymentOption = (typeof PAYMENT_OPTIONS)[number];
 
-export const PAYMENT_OPTION_COPY: Record<
-  PaymentOption,
-  { title: string; description: string }
-> = {
+export const PAYMENT_OPTION_COPY: Record<PaymentOption, { title: string; description: string }> = {
   STK_PUSH: {
     title: "Pay now with M-Pesa",
-    description:
-      "We send a payment request to your phone. Enter your M-Pesa PIN to complete it.",
+    description: "We send a payment request to your phone. Enter your M-Pesa PIN to complete it.",
   },
   MANUAL: {
     title: "Pay by M-Pesa PayBill",
@@ -127,7 +123,11 @@ const optionalYears = z
 export const membershipApplicationSchema = z
   .object({
     // --- Personal --------------------------------------------------------
-    firstName: z.string().trim().min(1, "First name is required.").max(80, "First name is too long."),
+    firstName: z
+      .string()
+      .trim()
+      .min(1, "First name is required.")
+      .max(80, "First name is too long."),
     middleName: z.string().trim().max(80, "Middle name is too long.").optional().default(""),
     surname: z.string().trim().min(1, "Surname is required.").max(80, "Surname is too long."),
     nationalId: z
@@ -137,7 +137,10 @@ export const membershipApplicationSchema = z
       .max(32, "National ID / passport number is too long."),
     dateOfBirth: optionalDateOfBirth,
     gender: z.enum(["", "MALE", "FEMALE", "OTHER"]).optional().default(""),
-    maritalStatus: z.enum(["", "SINGLE", "MARRIED", "DIVORCED", "WIDOWED", "OTHER"]).optional().default(""),
+    maritalStatus: z
+      .enum(["", "SINGLE", "MARRIED", "DIVORCED", "WIDOWED", "OTHER"])
+      .optional()
+      .default(""),
     occupation: optionalText(120, "Occupation is too long."),
     employerName: optionalText(200, "Employer name is too long."),
 

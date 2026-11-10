@@ -11,7 +11,6 @@ import { apiError, apiOk, readJson } from "@/lib/http";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { ValidationError } from "@/lib/errors";
 
-
 /**
  * Initiate the M-Pesa STK Push for the registration fee.
  *
@@ -23,10 +22,7 @@ const limiter = createRateLimiter({ limit: 6, windowMs: 10 * 60 * 1000 });
 
 const bodySchema = z.object({ phone: kenyanMobileSchema });
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     assertTrustedOrigin(request);
     const { id } = await context.params;

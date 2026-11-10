@@ -64,7 +64,12 @@ describe("membership FMS client", () => {
           payLaterEnabled: true,
           stkEnabled: true,
           manualEnabled: true,
-          documents: { mandatory: ["NATIONAL_ID"], optional: [], maxBytes: 1024, acceptedMimeTypes: [] },
+          documents: {
+            mandatory: ["NATIONAL_ID"],
+            optional: [],
+            maxBytes: 1024,
+            acceptedMimeTypes: [],
+          },
           contact: { phone: "", email: "", website: "", address: "" },
         },
       }),
@@ -143,7 +148,9 @@ describe("membership FMS client", () => {
     const calls = captureFetch(
       jsonResponse(201, {
         success: true,
-        data: { document: { id: "doc-1", documentType: "NATIONAL_ID", fileName: "id.jpg", sizeBytes: 10 } },
+        data: {
+          document: { id: "doc-1", documentType: "NATIONAL_ID", fileName: "id.jpg", sizeBytes: 10 },
+        },
       }),
     );
 

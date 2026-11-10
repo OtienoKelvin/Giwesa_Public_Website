@@ -3,7 +3,6 @@ import { getMembershipStatus } from "@/domains/membership/service";
 import { apiError, apiOk } from "@/lib/http";
 import { createRateLimiter } from "@/lib/rate-limit";
 
-
 /**
  * The applicant's own application status.
  *
@@ -13,10 +12,7 @@ import { createRateLimiter } from "@/lib/rate-limit";
  */
 const limiter = createRateLimiter({ limit: 180, windowMs: 10 * 60 * 1000 });
 
-export async function GET(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await context.params;
     const decision = limiter.consume(`membership:status:${membershipClientIp(request)}:${id}`);

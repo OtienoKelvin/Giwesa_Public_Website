@@ -12,12 +12,12 @@ rules and operations — is `giwesa-m-fms/docs/public-membership-registration.md
 
 ## Configuration
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| `FMS_API_URL` | to enable the page | FMS base URL, no trailing slash |
-| `FMS_CHANNEL_KEY` | to enable the page | Shared channel key (must match the FMS `PUBLIC_CHANNEL_API_KEY`) |
-| `FMS_CHANNEL_SECRET` | to enable the page | Shared HMAC secret (must match `PUBLIC_CHANNEL_API_SECRET`) |
-| `FMS_REQUEST_TIMEOUT_MS` | no (20000) | Per-call timeout |
+| Variable                 | Required           | Purpose                                                          |
+| ------------------------ | ------------------ | ---------------------------------------------------------------- |
+| `FMS_API_URL`            | to enable the page | FMS base URL, no trailing slash                                  |
+| `FMS_CHANNEL_KEY`        | to enable the page | Shared channel key (must match the FMS `PUBLIC_CHANNEL_API_KEY`) |
+| `FMS_CHANNEL_SECRET`     | to enable the page | Shared HMAC secret (must match `PUBLIC_CHANNEL_API_SECRET`)      |
+| `FMS_REQUEST_TIMEOUT_MS` | no (20000)         | Per-call timeout                                                 |
 
 When any of the three is unset, `/membership` renders an "online registration is
 not available" state with the office contact details. There is deliberately no

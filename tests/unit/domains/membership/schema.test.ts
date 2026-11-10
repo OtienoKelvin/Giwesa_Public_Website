@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  membershipApplicationSchema,
-  PAYMENT_OPTIONS,
-} from "@/domains/membership/schema";
+import { membershipApplicationSchema, PAYMENT_OPTIONS } from "@/domains/membership/schema";
 
 /**
  * The public form's validation.
@@ -118,9 +115,9 @@ describe("public membership application schema", () => {
 
   it("rejects malformed optional amounts and years", () => {
     expect(errorsFor({ expectedSavingsAmount: "abc" })).toContain("expectedSavingsAmount");
-    expect(errorsFor({ yearsInOperation: "101", hasBusiness: true, businessName: "Shop" })).toContain(
-      "yearsInOperation",
-    );
+    expect(
+      errorsFor({ yearsInOperation: "101", hasBusiness: true, businessName: "Shop" }),
+    ).toContain("yearsInOperation");
   });
 
   it("rejects a filled honeypot", () => {

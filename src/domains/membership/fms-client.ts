@@ -184,9 +184,7 @@ export interface FmsRequestOptions {
 async function request<T>(options: FmsRequestOptions): Promise<T> {
   const { baseUrl, key, secret } = requireConfiguration();
   const timestamp = String(Date.now());
-  const digest = options.multipart
-    ? MULTIPART_BODY_DIGEST
-    : requestBodyDigest(options.body ?? "");
+  const digest = options.multipart ? MULTIPART_BODY_DIGEST : requestBodyDigest(options.body ?? "");
   const signature = signChannelRequest({
     secret,
     method: options.method,

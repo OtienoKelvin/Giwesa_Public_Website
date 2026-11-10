@@ -124,11 +124,7 @@ export function validateApplicantFile(input: {
     }
     // A declared type that contradicts the bytes is a spoofing attempt (or a
     // broken client) and is refused rather than silently re-labelled.
-    if (
-      declared.length > 0 &&
-      declared !== "application/octet-stream" &&
-      declared !== mimeType
-    ) {
+    if (declared.length > 0 && declared !== "application/octet-stream" && declared !== mimeType) {
       throw new ValidationError(
         `${input.label} does not look like the file type it claims to be. Please choose it again.`,
       );

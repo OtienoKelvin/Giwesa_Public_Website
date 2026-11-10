@@ -14,15 +14,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  Send,
-  Upload,
-  Wallet,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Loader2, Send, Upload, Wallet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -173,14 +165,12 @@ export function MembershipRegistrationForm() {
     (async () => {
       try {
         const response = await fetch("/api/membership/config", { cache: "no-store" });
-        const payload = (await response.json().catch(() => null)) as
-          | {
-              ok?: boolean;
-              configured?: boolean;
-              config?: MembershipChannelConfig;
-              error?: string;
-            }
-          | null;
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          configured?: boolean;
+          config?: MembershipChannelConfig;
+          error?: string;
+        } | null;
         if (cancelled) return;
         if (!response.ok || !payload?.ok) {
           setConfigState({
@@ -295,14 +285,12 @@ export function MembershipRegistrationForm() {
           method: "POST",
           body: form,
         });
-        const payload = (await response.json().catch(() => null)) as
-          | {
-              ok?: boolean;
-              error?: string;
-              fields?: Record<string, string[]>;
-              application?: CreatedMembershipApplication;
-            }
-          | null;
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: string;
+          fields?: Record<string, string[]>;
+          application?: CreatedMembershipApplication;
+        } | null;
 
         if (!response.ok || !payload?.ok || !payload.application) {
           if (payload?.fields) {
@@ -327,13 +315,13 @@ export function MembershipRegistrationForm() {
 
         const stored: StoredResult = {
           application: payload.application,
-          config: configState.phase === "ready" ? configState.config : ({} as MembershipChannelConfig),
+          config:
+            configState.phase === "ready" ? configState.config : ({} as MembershipChannelConfig),
           applicantName: [values.firstName, values.middleName, values.surname]
             .map((part) => (part ?? "").trim())
             .filter(Boolean)
             .join(" "),
-          feeLabel:
-            configState.phase === "ready" ? configState.config.registrationFee.display : "",
+          feeLabel: configState.phase === "ready" ? configState.config.registrationFee.display : "",
           mpesaPhone: values.paymentOption === "STK_PUSH" ? values.mpesaPhone : "",
         };
 
@@ -342,10 +330,7 @@ export function MembershipRegistrationForm() {
         // screen. The application is ALREADY submitted at this point: a push that
         // cannot be sent is reported on the confirmation screen and never undoes
         // the application.
-        if (
-          payload.application.paymentOption === "STK_PUSH" &&
-          stored.mpesaPhone.length > 0
-        ) {
+        if (payload.application.paymentOption === "STK_PUSH" && stored.mpesaPhone.length > 0) {
           try {
             const push = await fetch(
               `/api/membership/applications/${payload.application.applicationId}/stk`,
@@ -358,9 +343,10 @@ export function MembershipRegistrationForm() {
                 body: JSON.stringify({ phone: stored.mpesaPhone }),
               },
             );
-            const pushBody = (await push.json().catch(() => null)) as
-              | { ok?: boolean; error?: string }
-              | null;
+            const pushBody = (await push.json().catch(() => null)) as {
+              ok?: boolean;
+              error?: string;
+            } | null;
             if (push.ok && pushBody?.ok) {
               stored.stkSent = true;
               stored.application = {
@@ -432,7 +418,10 @@ export function MembershipRegistrationForm() {
 
   if (configState.phase === "unavailable") {
     return (
-      <div className="rounded-2xl border border-warning/40 bg-warning-soft p-7 sm:p-8" role="status">
+      <div
+        className="rounded-2xl border border-warning/40 bg-warning-soft p-7 sm:p-8"
+        role="status"
+      >
         <AlertCircle className="size-6 text-warning" aria-hidden="true" />
         <h2 className="mt-3 font-display text-2xl text-brand-dark">
           Online registration is not available right now
@@ -462,13 +451,16 @@ export function MembershipRegistrationForm() {
   const acceptAttribute = "image/jpeg,image/png,image/webp";
 
   return (
-    <div ref={topRef} className="rounded-2xl border border-line bg-white p-5 shadow-[var(--shadow-soft-value)] sm:p-8">
+    <div
+      ref={topRef}
+      className="rounded-2xl border border-line bg-white p-5 shadow-[var(--shadow-soft-value)] sm:p-8"
+    >
       <div className="border-b border-line pb-5">
         <p className="eyebrow">Membership application</p>
         <h2 className="mt-3 font-display text-3xl text-brand-dark">Join GIWESA</h2>
         <p className="mt-2 text-sm leading-6 text-ink-muted">
-          No account is needed. Complete this form, upload your National ID copy and a
-          passport-size photograph, then choose how to pay the one-off registration fee.
+          No account is needed. Complete this form, upload your National ID copy and a passport-size
+          photograph, then choose how to pay the one-off registration fee.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-ink-muted">
           <span className="inline-flex items-center gap-1.5 font-bold text-brand-dark">
@@ -498,16 +490,35 @@ export function MembershipRegistrationForm() {
         </p>
 
         {/* ---- 1. Personal ------------------------------------------------ */}
-        <Section number={1} title="Personal details" description="Exactly as it appears on your ID.">
+        <Section
+          number={1}
+          title="Personal details"
+          description="Exactly as it appears on your ID."
+        >
           <div className="grid gap-5 sm:grid-cols-3">
             <Field label="First name" required error={errors.firstName?.message} htmlFor="m-first">
-              <input id="m-first" className="field" autoComplete="given-name" {...register("firstName")} />
+              <input
+                id="m-first"
+                className="field"
+                autoComplete="given-name"
+                {...register("firstName")}
+              />
             </Field>
             <Field label="Middle name" error={errors.middleName?.message} htmlFor="m-middle">
-              <input id="m-middle" className="field" autoComplete="additional-name" {...register("middleName")} />
+              <input
+                id="m-middle"
+                className="field"
+                autoComplete="additional-name"
+                {...register("middleName")}
+              />
             </Field>
             <Field label="Surname" required error={errors.surname?.message} htmlFor="m-surname">
-              <input id="m-surname" className="field" autoComplete="family-name" {...register("surname")} />
+              <input
+                id="m-surname"
+                className="field"
+                autoComplete="family-name"
+                {...register("surname")}
+              />
             </Field>
           </div>
 
@@ -522,7 +533,13 @@ export function MembershipRegistrationForm() {
               <input id="m-nid" className="field" inputMode="text" {...register("nationalId")} />
             </Field>
             <Field label="Date of birth" error={errors.dateOfBirth?.message} htmlFor="m-dob">
-              <input id="m-dob" type="date" className="field" max={new Date().toISOString().slice(0, 10)} {...register("dateOfBirth")} />
+              <input
+                id="m-dob"
+                type="date"
+                className="field"
+                max={new Date().toISOString().slice(0, 10)}
+                {...register("dateOfBirth")}
+              />
             </Field>
           </div>
 
@@ -551,7 +568,12 @@ export function MembershipRegistrationForm() {
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Occupation" error={errors.occupation?.message} htmlFor="m-occupation">
-              <input id="m-occupation" className="field" autoComplete="organization-title" {...register("occupation")} />
+              <input
+                id="m-occupation"
+                className="field"
+                autoComplete="organization-title"
+                {...register("occupation")}
+              />
             </Field>
             <Field label="Employer" error={errors.employerName?.message} htmlFor="m-employer">
               <input id="m-employer" className="field" {...register("employerName")} />
@@ -560,13 +582,40 @@ export function MembershipRegistrationForm() {
         </Section>
 
         {/* ---- 2. Contact & address -------------------------------------- */}
-        <Section number={2} title="Contact and address" description="How we reach you about this application.">
+        <Section
+          number={2}
+          title="Contact and address"
+          description="How we reach you about this application."
+        >
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Primary phone" required error={errors.primaryPhone?.message} htmlFor="m-phone">
-              <input id="m-phone" type="tel" inputMode="tel" autoComplete="tel" className="field" placeholder="0712 345 678" {...register("primaryPhone")} />
+            <Field
+              label="Primary phone"
+              required
+              error={errors.primaryPhone?.message}
+              htmlFor="m-phone"
+            >
+              <input
+                id="m-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                className="field"
+                placeholder="0712 345 678"
+                {...register("primaryPhone")}
+              />
             </Field>
-            <Field label="Alternative phone" error={errors.alternativePhone?.message} htmlFor="m-alt-phone">
-              <input id="m-alt-phone" type="tel" inputMode="tel" className="field" {...register("alternativePhone")} />
+            <Field
+              label="Alternative phone"
+              error={errors.alternativePhone?.message}
+              htmlFor="m-alt-phone"
+            >
+              <input
+                id="m-alt-phone"
+                type="tel"
+                inputMode="tel"
+                className="field"
+                {...register("alternativePhone")}
+              />
             </Field>
           </div>
           <Field
@@ -576,49 +625,113 @@ export function MembershipRegistrationForm() {
             htmlFor="m-email"
             hint="Your confirmation and reference number are sent here."
           >
-            <input id="m-email" type="email" autoComplete="email" className="field" placeholder="you@example.com" {...register("email")} />
+            <input
+              id="m-email"
+              type="email"
+              autoComplete="email"
+              className="field"
+              placeholder="you@example.com"
+              {...register("email")}
+            />
           </Field>
           <Field label="Postal address" error={errors.postalAddress?.message} htmlFor="m-postal">
-            <input id="m-postal" className="field" autoComplete="street-address" {...register("postalAddress")} />
+            <input
+              id="m-postal"
+              className="field"
+              autoComplete="street-address"
+              {...register("postalAddress")}
+            />
           </Field>
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="County" error={errors.county?.message} htmlFor="m-county">
-              <input id="m-county" className="field" autoComplete="address-level1" {...register("county")} />
+              <input
+                id="m-county"
+                className="field"
+                autoComplete="address-level1"
+                {...register("county")}
+              />
             </Field>
             <Field label="Sub-county" error={errors.subCounty?.message} htmlFor="m-subcounty">
-              <input id="m-subcounty" className="field" autoComplete="address-level2" {...register("subCounty")} />
+              <input
+                id="m-subcounty"
+                className="field"
+                autoComplete="address-level2"
+                {...register("subCounty")}
+              />
             </Field>
             <Field label="Ward" error={errors.ward?.message} htmlFor="m-ward">
               <input id="m-ward" className="field" {...register("ward")} />
             </Field>
-            <Field label="Village / estate" error={errors.villageEstate?.message} htmlFor="m-village">
+            <Field
+              label="Village / estate"
+              error={errors.villageEstate?.message}
+              htmlFor="m-village"
+            >
               <input id="m-village" className="field" {...register("villageEstate")} />
             </Field>
           </div>
         </Section>
 
         {/* ---- 3. Next of kin -------------------------------------------- */}
-        <Section number={3} title="Next of kin" description="Someone we can contact in an emergency." optional>
+        <Section
+          number={3}
+          title="Next of kin"
+          description="Someone we can contact in an emergency."
+          optional
+        >
           <div className="grid gap-5 sm:grid-cols-2">
             <Field label="Full name" error={errors.nextOfKinName?.message} htmlFor="m-nok-name">
               <input id="m-nok-name" className="field" {...register("nextOfKinName")} />
             </Field>
-            <Field label="Relationship" error={errors.nextOfKinRelationship?.message} htmlFor="m-nok-rel">
-              <input id="m-nok-rel" className="field" placeholder="e.g. Spouse" {...register("nextOfKinRelationship")} />
+            <Field
+              label="Relationship"
+              error={errors.nextOfKinRelationship?.message}
+              htmlFor="m-nok-rel"
+            >
+              <input
+                id="m-nok-rel"
+                className="field"
+                placeholder="e.g. Spouse"
+                {...register("nextOfKinRelationship")}
+              />
             </Field>
             <Field label="Phone" error={errors.nextOfKinPhone?.message} htmlFor="m-nok-phone">
-              <input id="m-nok-phone" type="tel" inputMode="tel" className="field" {...register("nextOfKinPhone")} />
+              <input
+                id="m-nok-phone"
+                type="tel"
+                inputMode="tel"
+                className="field"
+                {...register("nextOfKinPhone")}
+              />
             </Field>
-            <Field label="Physical address" error={errors.nextOfKinPhysicalAddress?.message} htmlFor="m-nok-address">
-              <input id="m-nok-address" className="field" {...register("nextOfKinPhysicalAddress")} />
+            <Field
+              label="Physical address"
+              error={errors.nextOfKinPhysicalAddress?.message}
+              htmlFor="m-nok-address"
+            >
+              <input
+                id="m-nok-address"
+                className="field"
+                {...register("nextOfKinPhysicalAddress")}
+              />
             </Field>
           </div>
         </Section>
 
         {/* ---- 4. Business ----------------------------------------------- */}
-        <Section number={4} title="Business or enterprise" description="Only if you run a business or trade." optional>
+        <Section
+          number={4}
+          title="Business or enterprise"
+          description="Only if you run a business or trade."
+          optional
+        >
           <div className="flex items-start gap-3 rounded-xl border border-line bg-canvas p-4">
-            <input id="m-has-business" type="checkbox" className="mt-0.5 size-4 shrink-0 accent-[var(--brand-primary)]" {...register("hasBusiness")} />
+            <input
+              id="m-has-business"
+              type="checkbox"
+              className="mt-0.5 size-4 shrink-0 accent-[var(--brand-primary)]"
+              {...register("hasBusiness")}
+            />
             <label htmlFor="m-has-business" className="text-sm leading-6 text-ink">
               I run a business or trade of my own
             </label>
@@ -626,17 +739,44 @@ export function MembershipRegistrationForm() {
           {hasBusiness ? (
             <>
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field label="Business name" required error={errors.businessName?.message} htmlFor="m-biz-name">
+                <Field
+                  label="Business name"
+                  required
+                  error={errors.businessName?.message}
+                  htmlFor="m-biz-name"
+                >
                   <input id="m-biz-name" className="field" {...register("businessName")} />
                 </Field>
-                <Field label="Business type" error={errors.businessType?.message} htmlFor="m-biz-type">
-                  <input id="m-biz-type" className="field" placeholder="e.g. Retail shop" {...register("businessType")} />
+                <Field
+                  label="Business type"
+                  error={errors.businessType?.message}
+                  htmlFor="m-biz-type"
+                >
+                  <input
+                    id="m-biz-type"
+                    className="field"
+                    placeholder="e.g. Retail shop"
+                    {...register("businessType")}
+                  />
                 </Field>
-                <Field label="Location" error={errors.businessLocation?.message} htmlFor="m-biz-location">
+                <Field
+                  label="Location"
+                  error={errors.businessLocation?.message}
+                  htmlFor="m-biz-location"
+                >
                   <input id="m-biz-location" className="field" {...register("businessLocation")} />
                 </Field>
-                <Field label="Years in operation" error={errors.yearsInOperation?.message} htmlFor="m-biz-years">
-                  <input id="m-biz-years" className="field" inputMode="numeric" {...register("yearsInOperation")} />
+                <Field
+                  label="Years in operation"
+                  error={errors.yearsInOperation?.message}
+                  htmlFor="m-biz-years"
+                >
+                  <input
+                    id="m-biz-years"
+                    className="field"
+                    inputMode="numeric"
+                    {...register("yearsInOperation")}
+                  />
                 </Field>
               </div>
             </>
@@ -644,9 +784,18 @@ export function MembershipRegistrationForm() {
         </Section>
 
         {/* ---- 5. Savings ------------------------------------------------ */}
-        <Section number={5} title="Savings intention" description="How you would like to save with GIWESA." optional>
+        <Section
+          number={5}
+          title="Savings intention"
+          description="How you would like to save with GIWESA."
+          optional
+        >
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Savings frequency" error={errors.savingsFrequency?.message} htmlFor="m-frequency">
+            <Field
+              label="Savings frequency"
+              error={errors.savingsFrequency?.message}
+              htmlFor="m-frequency"
+            >
               <select id="m-frequency" className="field" {...register("savingsFrequency")}>
                 <option value="">Not sure yet</option>
                 {SAVINGS_FREQUENCY_OPTIONS.map((option) => (
@@ -656,8 +805,18 @@ export function MembershipRegistrationForm() {
                 ))}
               </select>
             </Field>
-            <Field label="Expected contribution (KES)" error={errors.expectedSavingsAmount?.message} htmlFor="m-savings">
-              <input id="m-savings" className="field" inputMode="decimal" placeholder="e.g. 1000" {...register("expectedSavingsAmount")} />
+            <Field
+              label="Expected contribution (KES)"
+              error={errors.expectedSavingsAmount?.message}
+              htmlFor="m-savings"
+            >
+              <input
+                id="m-savings"
+                className="field"
+                inputMode="decimal"
+                placeholder="e.g. 1000"
+                {...register("expectedSavingsAmount")}
+              />
             </Field>
           </div>
         </Section>
@@ -721,7 +880,9 @@ export function MembershipRegistrationForm() {
                   <label
                     key={option}
                     className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors ${
-                      selected ? "border-brand bg-brand-light" : "border-line bg-white hover:border-line-strong"
+                      selected
+                        ? "border-brand bg-brand-light"
+                        : "border-line bg-white hover:border-line-strong"
                     }`}
                   >
                     <input
@@ -760,7 +921,14 @@ export function MembershipRegistrationForm() {
               htmlFor="m-mpesa-phone"
               hint="The number that will receive the M-Pesa payment request. Use 07XXXXXXXX or +2547XXXXXXXX."
             >
-              <input id="m-mpesa-phone" type="tel" inputMode="tel" className="field" placeholder="0712 345 678" {...register("mpesaPhone")} />
+              <input
+                id="m-mpesa-phone"
+                type="tel"
+                inputMode="tel"
+                className="field"
+                placeholder="0712 345 678"
+                {...register("mpesaPhone")}
+              />
             </Field>
           ) : null}
 
@@ -768,14 +936,18 @@ export function MembershipRegistrationForm() {
             <p className="rounded-xl border border-warning/40 bg-warning-soft p-4 text-xs leading-5 text-warning">
               <strong>Please note:</strong> your application is submitted immediately, but the{" "}
               {config.registrationFee.display} registration fee stays outstanding. Membership cannot
-              be activated until it is paid. You can settle it later with the PayBill details we send
-              you.
+              be activated until it is paid. You can settle it later with the PayBill details we
+              send you.
             </p>
           ) : null}
         </Section>
 
         {/* ---- 8. Review & declaration ----------------------------------- */}
-        <Section number={8} title="Review and submit" description="Check your details, then accept the declaration.">
+        <Section
+          number={8}
+          title="Review and submit"
+          description="Check your details, then accept the declaration."
+        >
           <ReviewSummary
             values={currentValues}
             fee={config.registrationFee.display}
@@ -797,8 +969,8 @@ export function MembershipRegistrationForm() {
               />
               <label htmlFor="m-consent" className="text-xs leading-5 text-ink-muted">
                 I confirm that the information in this application is true and complete, and I
-                authorise GIWESA to verify it, keep it as part of my membership record and contact me
-                about this application. I have read the{" "}
+                authorise GIWESA to verify it, keep it as part of my membership record and contact
+                me about this application. I have read the{" "}
                 <Link href="/privacy" className="font-bold text-brand underline underline-offset-2">
                   privacy notice
                 </Link>{" "}
@@ -822,7 +994,13 @@ export function MembershipRegistrationForm() {
           aria-hidden="true"
         >
           <label htmlFor="m-company">Company</label>
-          <input id="m-company" type="text" tabIndex={-1} autoComplete="off" {...register("company")} />
+          <input
+            id="m-company"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            {...register("company")}
+          />
         </div>
 
         <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-center sm:justify-between">
@@ -830,7 +1008,12 @@ export function MembershipRegistrationForm() {
             Your application is not a membership until it has been reviewed and approved by GIWESA.
             We will email you when its status changes.
           </p>
-          <Button type="submit" disabled={submitting} size="lg" className="min-w-56 justify-between">
+          <Button
+            type="submit"
+            disabled={submitting}
+            size="lg"
+            className="min-w-56 justify-between"
+          >
             {submitting ? (
               <>
                 Submitting application
@@ -867,7 +1050,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section aria-labelledby={`section-${number}`} className="space-y-4 border-t border-line pt-7 first:border-0 first:pt-0">
+    <section
+      aria-labelledby={`section-${number}`}
+      className="space-y-4 border-t border-line pt-7 first:border-0 first:pt-0"
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 id={`section-${number}`} className="flex items-baseline gap-2.5">
@@ -1058,7 +1244,8 @@ function ReviewSummary({
     { label: "National ID copy", value: documents.nationalId ?? "Not attached yet" },
     { label: "Photograph", value: documents.photograph ?? "Not attached yet" },
   ];
-  if (documents.supporting) rows.push({ label: "Supporting document", value: documents.supporting });
+  if (documents.supporting)
+    rows.push({ label: "Supporting document", value: documents.supporting });
 
   return (
     <div className="rounded-xl border border-line bg-canvas p-4">
@@ -1112,9 +1299,10 @@ function MembershipConfirmation({
         headers: { "x-membership-token": token },
         cache: "no-store",
       });
-      const payload = (await response.json().catch(() => null)) as
-        | { ok?: boolean; application?: { paymentState: string; status: string; fee: typeof fee } }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        application?: { paymentState: string; status: string; fee: typeof fee };
+      } | null;
       if (response.ok && payload?.ok && payload.application) {
         setApplication((current) => ({
           ...current,
@@ -1152,9 +1340,11 @@ function MembershipConfirmation({
         headers: { "content-type": "application/json", "x-membership-token": token },
         body: JSON.stringify({ phone: result.mpesaPhone }),
       });
-      const payload = (await response.json().catch(() => null)) as
-        | { ok?: boolean; error?: string; payment?: { message: string } }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        payment?: { message: string };
+      } | null;
       if (!response.ok || !payload?.ok) {
         setPaymentError(payload?.error ?? "The payment request could not be sent.");
         return;
@@ -1163,7 +1353,9 @@ function MembershipConfirmation({
       setApplication((current) => ({ ...current, paymentState: "PAYMENT_PENDING" }));
       void refresh();
     } catch {
-      setPaymentError("The payment request could not be sent. Check your connection and try again.");
+      setPaymentError(
+        "The payment request could not be sent. Check your connection and try again.",
+      );
     } finally {
       setPaymentBusy(false);
     }
@@ -1173,17 +1365,16 @@ function MembershipConfirmation({
     setCodeError("");
     setCodeBusy(true);
     try {
-      const response = await fetch(
-        `/api/membership/applications/${applicationId}/manual-payment`,
-        {
-          method: "POST",
-          headers: { "content-type": "application/json", "x-membership-token": token },
-          body: JSON.stringify({ mpesaCode }),
-        },
-      );
-      const payload = (await response.json().catch(() => null)) as
-        | { ok?: boolean; error?: string; application?: { paymentState: string; status: string; fee: typeof fee } }
-        | null;
+      const response = await fetch(`/api/membership/applications/${applicationId}/manual-payment`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-membership-token": token },
+        body: JSON.stringify({ mpesaCode }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        application?: { paymentState: string; status: string; fee: typeof fee };
+      } | null;
       if (!response.ok || !payload?.ok) {
         setCodeError(payload?.error ?? "The payment code could not be recorded.");
         return;
@@ -1205,7 +1396,8 @@ function MembershipConfirmation({
   }
 
   const paybill = result.config?.paybill ?? null;
-  const feeLabel = result.config?.registrationFee?.display ?? (result.feeLabel || "the registration fee");
+  const feeLabel =
+    result.config?.registrationFee?.display ?? (result.feeLabel || "the registration fee");
 
   return (
     <div className="rounded-2xl border border-leaf/30 bg-white p-5 shadow-[var(--shadow-soft-value)] sm:p-8">
@@ -1261,7 +1453,9 @@ function MembershipConfirmation({
                   : "bg-warning-soft text-warning"
             }`}
           >
-            {paid ? "Paid" : PAYMENT_STATE_LABELS[application.paymentState] ?? application.paymentState}
+            {paid
+              ? "Paid"
+              : (PAYMENT_STATE_LABELS[application.paymentState] ?? application.paymentState)}
           </span>
         </div>
 
@@ -1272,8 +1466,9 @@ function MembershipConfirmation({
         ) : awaitingVerification ? (
           <div className="mt-3 text-sm leading-6 text-ink-muted">
             <p>
-              Thank you — we have recorded your M-Pesa transaction code. Our finance team will verify
-              it against the GIWESA account. This does not delay the review of your application.
+              Thank you — we have recorded your M-Pesa transaction code. Our finance team will
+              verify it against the GIWESA account. This does not delay the review of your
+              application.
             </p>
             {application.paymentState === "AWAITING_MANUAL_VERIFICATION" ? (
               <p className="mt-2 text-xs">
@@ -1320,11 +1515,19 @@ function MembershipConfirmation({
                 Check payment status
               </Button>
             </div>
-            <PaymentInstructions paybill={paybill} reference={application.paymentReference} feeLabel={feeLabel} />
+            <PaymentInstructions
+              paybill={paybill}
+              reference={application.paymentReference}
+              feeLabel={feeLabel}
+            />
           </div>
         ) : application.paymentOption === "MANUAL" ? (
           <div className="mt-3 space-y-4">
-            <PaymentInstructions paybill={paybill} reference={application.paymentReference} feeLabel={feeLabel} />
+            <PaymentInstructions
+              paybill={paybill}
+              reference={application.paymentReference}
+              feeLabel={feeLabel}
+            />
             <div>
               <label htmlFor="m-manual-code" className="field-label">
                 Already paid? Enter the M-Pesa transaction code
@@ -1367,7 +1570,11 @@ function MembershipConfirmation({
               outstanding, but membership cannot be activated until it is paid. You can settle it at
               any time using the details below, quoting your payment reference.
             </p>
-            <PaymentInstructions paybill={paybill} reference={application.paymentReference} feeLabel={feeLabel} />
+            <PaymentInstructions
+              paybill={paybill}
+              reference={application.paymentReference}
+              feeLabel={feeLabel}
+            />
           </div>
         )}
       </div>

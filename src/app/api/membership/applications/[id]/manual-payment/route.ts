@@ -10,7 +10,6 @@ import { ValidationError } from "@/lib/errors";
 import { apiError, apiOk, readJson } from "@/lib/http";
 import { createRateLimiter } from "@/lib/rate-limit";
 
-
 /**
  * Record the applicant's manual-payment claim (the M-Pesa transaction code).
  *
@@ -29,10 +28,7 @@ const bodySchema = z.object({
     .regex(/^[A-Za-z0-9]+$/, "Use only letters and numbers from the confirmation SMS."),
 });
 
-export async function POST(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
-) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
     assertTrustedOrigin(request);
     const { id } = await context.params;

@@ -7,14 +7,16 @@ import {
   membershipClientIp,
 } from "@/domains/membership/http";
 import { validateApplicantFile } from "@/domains/membership/files";
-import { membershipApplicationSchema, type MembershipApplicationValues } from "@/domains/membership/schema";
+import {
+  membershipApplicationSchema,
+  type MembershipApplicationValues,
+} from "@/domains/membership/schema";
 import { submitMembership, type MembershipFiles } from "@/domains/membership/service";
 import { RateLimitedError, ValidationError } from "@/lib/errors";
 import { apiError, apiOk } from "@/lib/http";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { fieldErrors } from "@/lib/validation";
 import { logger } from "@/lib/logger";
-
 
 /**
  * Public membership application submission.
@@ -158,8 +160,7 @@ export async function POST(request: Request) {
     // working (its retry would then be a separate application, which is why the
     // real form always supplies one).
     const suppliedKey = (form.get("idempotencyKey") ?? request.headers.get("idempotency-key")) as
-      | string
-      | null;
+      string | null;
     const idempotencyKey =
       typeof suppliedKey === "string" && /^[A-Za-z0-9._:-]{8,200}$/.test(suppliedKey)
         ? suppliedKey

@@ -4,7 +4,7 @@ import { getMembershipConfig } from "@/domains/membership/service";
 import { apiOk } from "@/lib/http";
 import { createRateLimiter } from "@/lib/rate-limit";
 
-// // 
+// //
 /**
  * The registration fee, PayBill and payment options the form may offer.
  *

@@ -11,12 +11,7 @@ export const PAYMENT_OPTION_VALUES = ["STK_PUSH", "MANUAL", "PAY_LATER"] as cons
 export type PaymentOptionValue = (typeof PAYMENT_OPTION_VALUES)[number];
 
 export type PaymentStateValue =
-  | "UNPAID"
-  | "PAYMENT_PENDING"
-  | "AWAITING_MANUAL_VERIFICATION"
-  | "PAID"
-  | "FAILED"
-  | "REVERSED";
+  "UNPAID" | "PAYMENT_PENDING" | "AWAITING_MANUAL_VERIFICATION" | "PAID" | "FAILED" | "REVERSED";
 
 export interface MembershipChannelConfig {
   channelOpen: boolean;
